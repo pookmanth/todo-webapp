@@ -2,7 +2,37 @@
   <div>
     <div class="card bg-base-100 shadow-xl">
       <div class="card-body">
-        <h1 class="card-title text-2xl">To Do List</h1>
+        <div class="flex justify-between items-center mb-3">
+          <h1 class="card-title text-2xl">To Do List</h1>
+          <!-- Status Filter Buttons -->
+          <div class="flex justify-center mb-3">
+            <div class="btn-group">
+              <button
+                class="btn"
+                :class="{ 'btn-active': filterStatus === 'all' }"
+                @click="filterStatus = 'all'"
+              >
+                All
+              </button>
+              <button
+                class="btn"
+                :class="{ 'btn-active': filterStatus === 'pending' }"
+                @click="filterStatus = 'pending'"
+              >
+                Pending
+              </button>
+              <button
+                class="btn"
+                :class="{ 'btn-active': filterStatus === 'done' }"
+                @click="filterStatus = 'done'"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add new task form -->
         <div>
           <form @submit.prevent="addTodo">
             <div class="join mt-3 w-full">
@@ -18,21 +48,27 @@
             </div>
           </form>
 
-          <div class="overflow-x-auto">
-            <table class="table table-zebra mt-3">
+          <!-- Task table -->
+          <div class="overflow-x-auto w-full">
+            <table class="table table-zebra mt-3 w-full">
               <thead>
                 <tr>
-                  <th>Description</th>
-                  <th>Status</th>
-                  <th>Action</th>
+                  <th class="w-1/2">Description</th>
+                  <th class="w-1/6">Status</th>
+                  <th class="w-1/3">Action</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="todo in todos" :key="todo.id">
-                  <td v-if="todo.done">
-                    <span class="line-through">{{ todo.description }}</span>
+                <tr v-for="todo in filteredTodos" :key="todo.id">
+                  <td class="max-w-xs" :title="todo.description">
+                    <div class="max-w-xs">
+                      <span v-if="todo.done" class="line-through">{{
+                        todo.description
+                      }}</span>
+                      <span v-else>{{ todo.description }}</span>
+                    </div>
                   </td>
-                  <td v-else>{{ todo.description }}</td>
+
                   <td>
                     <span v-if="todo.done" class="badge badge-success"
                       >Done</span
@@ -106,10 +142,12 @@ const newTodoDescription = useCookie("todo-description", {
 
 const todos = ref([]);
 const editModalRef = ref(null);
+const filterStatus = ref("all"); // 'all', 'pending', or 'done'
+
 const editingTodo = reactive({
   num: null,
   description: "",
-  done: 0
+  done: 0,
 });
 
 async function fetchTodos() {
@@ -118,6 +156,18 @@ async function fetchTodos() {
 
 onMounted(async () => {
   fetchTodos();
+});
+
+// Computed property for filtered todos based on selected status
+const filteredTodos = computed(() => {
+  if (filterStatus.value === "all") {
+    return todos.value;
+  } else if (filterStatus.value === "pending") {
+    return todos.value.filter((todo) => !todo.done);
+  } else if (filterStatus.value === "done") {
+    return todos.value.filter((todo) => todo.done);
+  }
+  return todos.value;
 });
 
 async function markDone(todo) {
@@ -135,7 +185,7 @@ function openEditModal(todo) {
   editingTodo.num = todo.num;
   editingTodo.description = todo.description;
   editingTodo.done = todo.done;
-  
+
   // Open the modal
   editModalRef.value.showModal();
 }
@@ -148,9 +198,9 @@ async function saveEdit() {
   await putTodo({
     num: editingTodo.num,
     description: editingTodo.description,
-    done: editingTodo.done
+    done: editingTodo.done,
   });
-  
+
   closeEditModal();
   await fetchTodos();
 }
